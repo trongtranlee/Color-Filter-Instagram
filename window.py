@@ -10,24 +10,33 @@ def filter_func(label):
 	global current_filter
 	current_filter = label  # Lưu filter được chọn
 
+
 def update_camera():
 	global color, img
 	while True:
 		ret, img = cap.read()
+		img = cv2.flip(img, 1) #Lật lại camera
+		# Tăng độ sáng và tương phản cho ảnh từ camera
+		color = filters.brightness_contrast(img, scont.val / 10, sbright.val - 50)
+		color = filters.hue_saturation(color, shue.val / 10, ssat.val / 10)
 		if current_filter:
-			color = filters.filters[current_filter](img)
-		else:
-			color = img.copy()
+			color = filters.filters[current_filter](color)
+		# Hiển thị ảnh đã xử lý trên giao diện
 		if radio.value_selected == 'color':
-			if len(color.shape) == 3:  # Kiểm tra kích thước của mảng
-				l.set_data(color[:,:,::-1])
+			if len(color.shape) == 3:  # Kiểm tra nếu là ảnh màu
+				l.set_data(color[:,:,::-1])  # Hiển thị ảnh màu
 			else:
-				l.set_data(color)
+				l.set_data(color)  # Hiển thị ảnh xám
 		else:
-			gray = cv2.cvtColor(color, cv2.COLOR_BGR2GRAY)
-			l.set_data(gray)
-			l.set_cmap('gray')
+			if len(color.shape) == 3:  # Kiểm tra nếu là ảnh màu
+				gray = cv2.cvtColor(color, cv2.COLOR_BGR2GRAY)  # Chuyển đổi thành ảnh xám
+				l.set_data(gray)
+				l.set_cmap('gray')  # Đặt colormap cho ảnh xám
+			else:
+				l.set_data(color)  # Hiển thị ảnh xám đã xử lý
 		fig.canvas.draw_idle()
+
+
 
 def update(val):
 	global color, img
@@ -41,14 +50,15 @@ def update(val):
 		l.set_cmap('gray')
 	fig.canvas.draw_idle()
 
-
 def colorfunc(label):
-	if(label == 'color'):
-		l.set_data(color[:,:,::-1])
-	else:
-		l.set_data(gray)
-		l.set_cmap('gray')
+	global color, gray
+	if label == 'color' and len(color.shape) == 3:
+		l.set_data(color[:,:,::-1])  # Hiển thị ảnh màu
+	elif label == 'grayscale' and len(gray.shape) == 2:
+		l.set_data(gray)  # Hiển thị ảnh xám
+		l.set_cmap('gray')  # Đặt colormap cho ảnh xám
 	fig.canvas.draw_idle()
+
 
 
 def reset():
@@ -86,6 +96,7 @@ if __name__ == "__main__":
 	# RadioButtons cho chuyển đổi giữa hiển thị màu sắc và ảnh xám
 	rax = plt.axes([0.1, 0.02, 0.15, 0.15], facecolor=axcolor)
 	radio = RadioButtons(rax, ('color', 'grayscale'), active=0)
+	
 	current_filter = None
 	
 	# Tạo luồng riêng cho việc đọc dữ liệu từ camera và cập nhật hình ảnh
